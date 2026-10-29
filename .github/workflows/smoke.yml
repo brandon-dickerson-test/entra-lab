@@ -21,3 +21,23 @@ jobs:
 
       - name: State storage access works
         run: az storage container list --account-name sttfstate23953 --auth-mode login -o table
+
+      - name: Show token claims (not the tokens)
+        run: |
+          claims() { python3 -c 'import sys,json,base64
+          p=sys.stdin.read().strip().split(".")[1]; p+="="*(-len(p)%4)
+          c=json.loads(base64.urlsafe_b64decode(p))
+          print(json.dumps({k:c.get(k) for k in sys.argv[1:]}, indent=2))' "$@"; }
+
+          echo "== 1. GitHub OIDC token =="
+          curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" \
+            | jq -r .value | claims iss sub aud repository ref exp
+
+          echo "== 2. Entra token for Graph =="
+          az account get-access-token --resource https://graph.microsoft.com \
+            --query accessToken -o tsv | claims aud iss appid oid idtyp roles exp
+
+          echo "== 3. Entra token for Storage =="
+          az account get-access-token --resource https://storage.azure.com \
+            --query accessToken -o tsv | claims aud appid oid roles exp
