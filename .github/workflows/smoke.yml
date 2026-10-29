@@ -1,0 +1,23 @@
+name: smoke-test
+on: workflow_dispatch          # adds a "Run workflow" button
+
+permissions:
+  id-token: write              # allow requesting the GitHub OIDC token
+  contents: read
+
+jobs:
+  login:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sign in to Entra with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Graph permissions work
+        run: az ad user list --query "[].userPrincipalName" -o tsv
+
+      - name: State storage access works
+        run: az storage container list --account-name sttfstate23953 --auth-mode login -o table
